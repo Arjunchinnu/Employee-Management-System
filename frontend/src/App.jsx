@@ -1,15 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./index.css";
+
 import AdminLayout from "./layouts/AdminLayout";
 
+// Admin pages
 import AdminLogin from "./pages/Login";
 import AdminDashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
+import LeaveRequests from "./pages/LeaveRequests";
 
+// Employee pages remain separate from the admin sidebar.
 import EmployeeLogin from "./pages/EmployeeLogin";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 
-// Protect admin pages
+// Protect admin pages.
 function AdminRoute({ children }) {
   const token = localStorage.getItem("adminToken");
   const role = localStorage.getItem("adminRole");
@@ -21,7 +25,7 @@ function AdminRoute({ children }) {
   return children;
 }
 
-// Protect employee pages
+// Protect employee pages.
 function EmployeeRoute({ children }) {
   const token = localStorage.getItem("employeeToken");
   const role = localStorage.getItem("employeeRole");
@@ -37,10 +41,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Employee login is the normal homepage */}
+        {/* Employee login */}
         <Route path="/" element={<EmployeeLogin />} />
 
-        {/* Employee pages */}
+        {/* Employee dashboard — separate from admin layout */}
         <Route
           path="/employee/dashboard"
           element={
@@ -53,7 +57,7 @@ export default function App() {
         {/* Admin login */}
         <Route path="/admin/login" element={<AdminLogin />} />
 
-        {/* Admin pages */}
+        {/* Admin layout and sidebar */}
         <Route
           path="/admin"
           element={
@@ -62,9 +66,26 @@ export default function App() {
             </AdminRoute>
           }
         >
+          {/* Default admin page */}
+          <Route
+            index
+            element={<Navigate to="/admin/dashboard" replace />}
+          />
+
+          {/* Admin sidebar pages */}
           <Route path="dashboard" element={<AdminDashboard />} />
 
           <Route path="employees" element={<Employees />} />
+
+          <Route
+            path="attendance"
+            element={<div>Attendance Management</div>}
+          />
+
+          {/* Leave Requests page */}
+          <Route path="leaves" element={<LeaveRequests />} />
+
+          <Route path="settings" element={<div>Admin Settings</div>} />
         </Route>
 
         {/* Unknown URLs */}

@@ -22,8 +22,7 @@ exports.checklogin = async (req, res) => {
 // Admin login
 exports.adminLogin = async (req, res) => {
   try {
-
-    cosonle.log("Admin login request received:", req.body);
+    console.log("Admin login request received:");
     const { email, password } = req.body;
 
     // Validate input
@@ -53,10 +52,7 @@ exports.adminLogin = async (req, res) => {
     }
 
     // Compare password with stored hash
-    const isMatch = await bcrypt.compare(
-      password,
-      admin.password
-    );
+    const isMatch = await bcrypt.compare(password, admin.password);
 
     if (!isMatch) {
       return res.status(401).json({
@@ -84,7 +80,7 @@ exports.adminLogin = async (req, res) => {
       process.env.JWT_SECRET,
       {
         expiresIn: "1h",
-      }
+      },
     );
 
     // Return successful response

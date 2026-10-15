@@ -10,11 +10,11 @@ import {
 } from "lucide-react";
 
 const menuItems = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  { name: "Employees", path: "/employees", icon: Users },
-  { name: "Attendance", path: "/attendance", icon: CalendarCheck },
-  { name: "Leave Requests", path: "/leaves", icon: ClipboardList },
-  { name: "Settings", path: "/settings", icon: Settings },
+  { name: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
+  { name: "Employees", path: "/admin/employees", icon: Users },
+  { name: "Attendance", path: "/admin/attendance", icon: CalendarCheck },
+  { name: "Leave Requests", path: "/admin/leaves", icon: ClipboardList },
+  { name: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
 export default function Sidebar() {

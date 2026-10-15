@@ -58,7 +58,7 @@ export default function Login() {
 
     try {
       console.log("Attempting admin login with email:", email);
-      const response = await API.post("/admin/auth/login", {
+      const response = await API.post("/auth/admin/login", {
         email,
         password,
       });

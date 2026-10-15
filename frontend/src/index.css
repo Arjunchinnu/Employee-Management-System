@@ -1155,3 +1155,565 @@ font-size: 26px;
 grid-template-columns: 1fr;
 }
 }
+
+
+/* ==========================================
+   LEAVE REQUESTS PAGE
+========================================== */
+
+.container-fluid.py-4 {
+  color: #1e293b;
+  animation: leavePageFade 0.35s ease-in-out;
+}
+
+@keyframes leavePageFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================
+   PAGE HEADER
+========================================== */
+
+.container-fluid.py-4 h2 {
+  color: #0f172a;
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: -0.7px;
+}
+
+.container-fluid.py-4 h2 + p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #64748b !important;
+}
+
+.container-fluid.py-4 > .d-flex > .btn-outline-primary {
+  padding: 10px 18px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+
+.container-fluid.py-4 > .d-flex > .btn-outline-primary:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.container-fluid.py-4 > .d-flex > .btn-outline-primary:disabled {
+  opacity: 0.6;
+  transform: none;
+}
+
+/* ==========================================
+   CARDS
+========================================== */
+
+.container-fluid.py-4 .card {
+  overflow: hidden;
+  border: 1px solid #edf0f5 !important;
+  border-radius: 15px !important;
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.035) !important;
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.container-fluid.py-4 .card-header {
+  padding: 20px 22px !important;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.container-fluid.py-4 .card-header h5 {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.container-fluid.py-4 .card-body {
+  padding: 22px;
+}
+
+.container-fluid.py-4 .card-header.bg-white {
+  background: #ffffff !important;
+}
+
+/* ==========================================
+   SUMMARY CARDS
+========================================== */
+
+.container-fluid.py-4 .row.g-3 .card {
+  min-height: 130px;
+}
+
+.container-fluid.py-4 .row.g-3 .card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 24px;
+}
+
+.container-fluid.py-4 .row.g-3 .text-muted {
+  margin-bottom: 12px !important;
+  color: #64748b !important;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.container-fluid.py-4 .row.g-3 h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 32px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.container-fluid.py-4 .rounded-circle {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+}
+
+.container-fluid.py-4 .bg-warning-subtle {
+  background: #fff7e6 !important;
+}
+
+.container-fluid.py-4 .bg-success-subtle {
+  background: #dcfce7 !important;
+}
+
+.container-fluid.py-4 .bg-danger-subtle {
+  background: #fee2e2 !important;
+}
+
+.container-fluid.py-4 .bg-primary-subtle {
+  background: #eff6ff !important;
+}
+
+.container-fluid.py-4 .text-warning-emphasis {
+  color: #b45309 !important;
+}
+
+.container-fluid.py-4 .text-success {
+  color: #15803d !important;
+}
+
+.container-fluid.py-4 .text-danger {
+  color: #dc2626 !important;
+}
+
+.container-fluid.py-4 .text-primary {
+  color: #2563eb !important;
+}
+
+/* ==========================================
+   FILTER SECTION
+========================================== */
+
+.container-fluid.py-4 .card-body .fw-semibold.me-2 {
+  color: #334155;
+  font-size: 13px;
+}
+
+.container-fluid.py-4 .btn-sm {
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.container-fluid.py-4 .btn-primary {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.container-fluid.py-4 .btn-primary:hover {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.container-fluid.py-4 .btn-outline-secondary {
+  border-color: #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+}
+
+.container-fluid.py-4 .btn-outline-secondary:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* ==========================================
+   ALERT / ERROR MESSAGE
+========================================== */
+
+.container-fluid.py-4 .alert-danger {
+  padding: 15px 18px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.container-fluid.py-4 .alert-danger .btn-outline-danger {
+  border-color: #fca5a5;
+  background: #ffffff;
+  color: #b91c1c;
+}
+
+.container-fluid.py-4 .alert-danger .btn-outline-danger:hover {
+  background: #fee2e2;
+}
+
+/* ==========================================
+   TABLE CONTAINER
+========================================== */
+
+.container-fluid.py-4 .table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.container-fluid.py-4 .table {
+  width: 100%;
+  margin-bottom: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.container-fluid.py-4 .table thead th {
+  padding: 16px 14px;
+  border-bottom: 1px solid #e9eef5;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.container-fluid.py-4 .table tbody td {
+  padding: 17px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+  vertical-align: middle;
+  line-height: 1.6;
+}
+
+.container-fluid.py-4 .table-hover tbody tr:hover td {
+  background: #f8fbff;
+}
+
+.container-fluid.py-4 .table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.container-fluid.py-4 .table-light th {
+  background: #f8fafc !important;
+}
+
+/* ==========================================
+   EMPLOYEE INFORMATION
+========================================== */
+
+.container-fluid.py-4 .table tbody td .fw-semibold {
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.container-fluid.py-4 .table tbody td small.text-muted {
+  display: inline-block;
+  margin-top: 3px;
+  color: #94a3b8 !important;
+  font-size: 11px;
+}
+
+/* ==========================================
+   LEAVE TYPE BADGE
+========================================== */
+
+.container-fluid.py-4 .badge.bg-light {
+  padding: 7px 10px;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 7px;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+/* ==========================================
+   STATUS BADGES
+========================================== */
+
+.container-fluid.py-4 .badge.rounded-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px !important;
+  border-radius: 20px !important;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.container-fluid.py-4 .badge.bg-success-subtle {
+  border-color: #bbf7d0 !important;
+  background: #f0fdf4 !important;
+  color: #15803d !important;
+}
+
+.container-fluid.py-4 .badge.bg-danger-subtle {
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+}
+
+.container-fluid.py-4 .badge.bg-warning-subtle {
+  border-color: #fde68a !important;
+  background: #fffbeb !important;
+  color: #b45309 !important;
+}
+
+/* ==========================================
+   REASON TEXT
+========================================== */
+
+.container-fluid.py-4 .table td div[style*="white-space"] {
+  min-width: 180px;
+  max-width: 280px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================
+   ADMIN COMMENT TEXTAREA
+========================================== */
+
+.container-fluid.py-4 textarea.form-control {
+  min-width: 160px;
+  padding: 10px 11px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+  box-shadow: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.container-fluid.py-4 textarea.form-control::placeholder {
+  color: #a0aec0;
+}
+
+.container-fluid.py-4 textarea.form-control:focus {
+  border-color: #60a5fa;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.container-fluid.py-4 .d-flex.align-items-center.gap-1.mb-2 {
+  color: #64748b !important;
+  font-size: 11px;
+}
+
+/* ==========================================
+   APPROVE BUTTON
+========================================== */
+
+.container-fluid.py-4 .btn-success {
+  border-color: #16a34a;
+  border-radius: 7px;
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.container-fluid.py-4 .btn-success:hover {
+  border-color: #15803d;
+  background: #15803d;
+  transform: translateY(-1px);
+}
+
+/* ==========================================
+   REJECT BUTTON
+========================================== */
+
+.container-fluid.py-4 .btn-outline-danger {
+  border-color: #fecaca;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #dc2626;
+}
+
+.container-fluid.py-4 .btn-outline-danger:hover {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* ==========================================
+   DISABLED BUTTONS
+========================================== */
+
+.container-fluid.py-4 button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ==========================================
+   LOADING SPINNER
+========================================== */
+
+.container-fluid.py-4 .spinner-border {
+  width: 38px;
+  height: 38px;
+  border-width: 3px;
+}
+
+.container-fluid.py-4 .text-center.py-5 p {
+  color: #64748b !important;
+  font-size: 13px;
+}
+
+/* ==========================================
+   EMPTY STATE
+========================================== */
+
+.container-fluid.py-4 .text-center.py-5.px-3 {
+  padding: 60px 20px !important;
+}
+
+.container-fluid.py-4 .text-center.py-5.px-3 > svg {
+  margin-bottom: 18px;
+  color: #94a3b8 !important;
+}
+
+.container-fluid.py-4 .text-center.py-5.px-3 h5 {
+  margin-bottom: 8px;
+  color: #1e293b;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.container-fluid.py-4 .text-center.py-5.px-3 p {
+  color: #94a3b8 !important;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* ==========================================
+   TABLE FOOTER
+========================================== */
+
+.container-fluid.py-4 .card-footer {
+  padding: 16px 22px;
+  border-top: 1px solid #edf0f5;
+  background: #ffffff !important;
+  color: #94a3b8 !important;
+  font-size: 12px;
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN
+========================================== */
+
+@media (max-width: 1200px) {
+  .container-fluid.py-4 .table {
+    min-width: 1050px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container-fluid.py-4 {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+  }
+
+  .container-fluid.py-4 h2 {
+    font-size: 24px;
+  }
+
+  .container-fluid.py-4 .row.g-3 .card-body {
+    padding: 20px;
+  }
+
+  .container-fluid.py-4 .row.g-3 h3 {
+    font-size: 28px;
+  }
+
+  .container-fluid.py-4 .card-body {
+    padding: 18px;
+  }
+
+  .container-fluid.py-4 .card-header {
+    padding: 17px 18px !important;
+  }
+
+  .container-fluid.py-4 .table {
+    min-width: 1050px;
+  }
+
+  .container-fluid.py-4 .alert-danger {
+    align-items: flex-start !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .container-fluid.py-4 h2 {
+    font-size: 22px;
+  }
+
+  .container-fluid.py-4 > .d-flex > .btn-outline-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .container-fluid.py-4 .row.g-3 h3 {
+    font-size: 26px;
+  }
+
+  .container-fluid.py-4 .btn-sm {
+    padding: 8px 11px;
+  }
+
+  .container-fluid.py-4 .card-footer {
+    padding: 14px 16px;
+  }
+}
