@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -18,6 +19,21 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to logout?");
+
+    if (!confirmed) return;
+
+    // Remove admin authentication data
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminRole");
+
+    // Redirect to admin login
+    navigate("/admin/login", { replace: true });
+  };
+
   return (
     <aside className="admin-sidebar">
       <div className="sidebar-brand">
@@ -60,8 +76,9 @@ export default function Sidebar() {
         </div>
 
         <button
+          type="button"
           className="logout-button"
-          onClick={() => alert("Logout functionality will be added later.")}
+          onClick={handleLogout}
         >
           <LogOut size={18} />
           <span>Logout</span>
@@ -70,3 +87,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+
