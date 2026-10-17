@@ -1,4 +1,3 @@
-
 const express = require("express");
 
 const router = express.Router();
@@ -13,6 +12,8 @@ const {
 
 const { protectAdmin } = require("../middlewares/authMiddleware");
 
+
+
 // All routes below require admin authentication
 router.post("/", protectAdmin, createEmployee);
 
@@ -25,4 +26,3 @@ router.put("/:id", protectAdmin, updateEmployee);
 router.delete("/:id", protectAdmin, deleteEmployee);
 
 module.exports = router;
-

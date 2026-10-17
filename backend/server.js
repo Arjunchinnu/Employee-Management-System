@@ -1,6 +1,14 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+
+//app-backend
+const faceRoutes = require("./app-backend/routes/faceRoutes");
+
+
+
+
+
 const employeeRoutes = require("./routes/empRouter");
 const employeeAuthRoutes = require("./routes/employeeRoutes");
 const authRoutes = require("./routes/authRoutes");
@@ -22,6 +30,14 @@ app.get("/api/health", (req, res) => {
     message: "Employee Management API is running",
   });
 });
+
+
+//approutes
+app.use("/api/app/face", faceRoutes);
+
+
+
+
 
 app.use("/api/auth", authRoutes);
 // app.use("/api/auth", require("./routes/authRoutes"));
