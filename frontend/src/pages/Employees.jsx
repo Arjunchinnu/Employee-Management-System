@@ -40,7 +40,7 @@ export default function Employees() {
       setLoading(true);
       setError("");
 
-      const response = await API.get("/employees");
+      const response = await API.get("/admin/employees");
 
       const data = response.data;
 
@@ -119,9 +119,9 @@ export default function Employees() {
       }
 
       if (editingId) {
-        await API.put(`/employees/${editingId}`, payload);
+        await API.put(`/admin/employees/${editingId}`, payload);
       } else {
-        await API.post("/employees", payload);
+        await API.post("/admin/employees", payload);
       }
 
       setShowForm(false);
@@ -150,7 +150,7 @@ export default function Employees() {
     try {
       setError("");
 
-      await API.delete(`/employees/${employee._id}`);
+      await API.delete(`/admin/employees/${employee._id}`);
 
       await fetchEmployees();
     } catch (err) {

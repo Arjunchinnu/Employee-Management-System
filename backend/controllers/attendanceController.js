@@ -1,4 +1,59 @@
+
+// Admin: Get attendance records for a selected date
 const Attendance = require("../models/Attendance");
+const Employee = require("../models/Employee");
+
+exports.getAllAttendance = async (req, res) => {
+  try {
+    // Use the date supplied by the dashboard.
+    // If no date is supplied, use today's date in India.
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+
+    const date = req.query.date || today;
+
+    // Validate the YYYY-MM-DD date format.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date. Use YYYY-MM-DD format.",
+      });
+    }
+
+    // Fetch attendance records for the selected date.
+    const attendance = await Attendance.find({
+      date,
+    })
+      .populate(
+        "employee",
+        "employeeId name email department designation"
+      )
+      .sort({ checkIn: -1 });
+
+    return res.status(200).json({
+      success: true,
+      date,
+      count: attendance.length,
+      attendance,
+    });
+  } catch (error) {
+    console.error("Admin attendance fetch failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch attendance records.",
+    });
+  }
+};
+
+
+
+
+// const Attendance = require("../models/Attendance");
 
 // Employee check-in
 exports.checkIn = async (req, res) => {

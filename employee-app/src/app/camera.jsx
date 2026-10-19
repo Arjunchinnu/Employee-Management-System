@@ -1,472 +1,438 @@
 import React, { useState, useEffect, useRef } from "react";
+
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   Animated,
   Easing,
+  Alert,
 } from "react-native";
 
+import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams, router, Stack } from "expo-router";
-import {
-  ScanFace,
-  ArrowLeft,
-  Camera,
-  ShieldCheck,
-  RotateCcw,
-} from "lucide-react-native";
 
-// Fixed frame size that fits comfortably inside the camera box
-const FRAME_WIDTH = 190;
-const FRAME_HEIGHT = 230;
-const SCAN_TRAVEL = FRAME_HEIGHT - 30;
+import { ScanFace, ArrowLeft, Camera, ShieldCheck } from "lucide-react-native";
+
+// Use your laptop's current IPv4 address.
+const API_BASE_URL = "http://172.20.10.3:5000";
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const { action } = useLocalSearchParams();
 
+  const cameraRef = useRef(null);
+
   const [cameraReady, setCameraReady] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState(false);
 
-  const scanLinePosition = useRef(new Animated.Value(0)).current;
-  const pulseAnimation = useRef(new Animated.Value(1)).current;
+  const scanAnimation = useRef(new Animated.Value(0)).current;
 
   const isCheckIn = action === "check-in";
 
-  const startScanAnimation = () => {
-    scanLinePosition.setValue(0);
-    Animated.loop(
+  useEffect(() => {
+    const animation = Animated.loop(
       Animated.sequence([
-        Animated.timing(scanLinePosition, {
+        Animated.timing(scanAnimation, {
           toValue: 1,
-          duration: 1800,
+          duration: 1600,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.timing(scanLinePosition, {
+        Animated.timing(scanAnimation, {
           toValue: 0,
-          duration: 1800,
+          duration: 1600,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-      ])
-    ).start();
+      ]),
+    );
+
+    animation.start();
+
+    return () => animation.stop();
+  }, [scanAnimation]);
+
+  // Upload the captured photo using XMLHttpRequest.
+  const uploadFacePhoto = (photoUri, endpoint) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.open("POST", `${API_BASE_URL}${endpoint}`);
+      xhr.timeout = 60000;
+
+      xhr.onload = () => {
+        let data;
+
+        try {
+          data = JSON.parse(xhr.responseText || "{}");
+        } catch {
+          reject(
+            new Error(
+              `The server returned an invalid response (HTTP ${xhr.status}).`,
+            ),
+          );
+          return;
+        }
+
+        // if (xhr.status < 200 || xhr.status >= 300) {
+        //   reject(
+        //     new Error(
+        //       data.message || `Request failed with status ${xhr.status}.`,
+        //     ),
+        //   );
+        //   return;
+        // }
+
+        if (xhr.status < 200 || xhr.status >= 300) {
+          console.log("HTTP STATUS:", xhr.status);
+          console.log("BACKEND RESPONSE:", xhr.responseText);
+
+          reject(
+            new Error(
+              data.message || `Request failed with status ${xhr.status}.`,
+            ),
+          );
+          return;
+        }
+
+        resolve(data);
+      };
+
+      xhr.onerror = () => {
+        reject(
+          new Error(
+            `Cannot connect to ${API_BASE_URL}. Check your Wi-Fi and backend.`,
+          ),
+        );
+      };
+
+      xhr.ontimeout = () => {
+        reject(new Error("The attendance request timed out."));
+      };
+
+      xhr.onabort = () => {
+        reject(new Error("The attendance request was cancelled."));
+      };
+
+      const formData = new FormData();
+
+      // React Native's native file-upload object.
+      formData.append("face", {
+        uri: photoUri,
+        name: "attendance.jpg",
+        type: "image/jpeg",
+      });
+
+      // Do not manually set Content-Type.
+      // XMLHttpRequest must generate the multipart boundary.
+      xhr.send(formData);
+    });
   };
 
-  useEffect(() => {
-    if (cameraReady) startScanAnimation();
-    return () => scanLinePosition.stopAnimation();
-  }, [cameraReady]);
+  const handleScan = async () => {
+    if (!cameraReady || scanning || cameraError) {
+      return;
+    }
 
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnimation, {
-          toValue: 1.04,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnimation, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
-
-  const handleScan = () => {
-    if (!cameraReady || scanning || cameraError) return;
+    if (!cameraRef.current) {
+      Alert.alert("Camera Error", "The camera is not ready.");
+      return;
+    }
 
     setScanning(true);
 
-    // UI demonstration only.
-    // Real AI face recognition and attendance APIs will be connected separately.
-    setTimeout(() => {
-      setScanning(false);
+    try {
+      // 1. Capture the photo.
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.7,
+        base64: false,
+      });
+
+      if (!photo?.uri) {
+        throw new Error("Could not capture the face image.");
+      }
+
+      // 2. Select the correct backend endpoint.
+      const endpoint = isCheckIn
+        ? "/api/face-attendance/check-in"
+        : "/api/face-attendance/check-out";
+
+      // 3. Upload the photo.
+      const data = await uploadFacePhoto(photo.uri, endpoint);
+
+      if (!data.success) {
+        throw new Error(data.message || "Face verification failed.");
+      }
+
+      // 4. Return to the home screen.
       router.replace({
         pathname: "/",
         params: {
-          message:
-            "Camera test completed. AI face recognition is not connected yet.",
+          message: data.message || "Attendance recorded successfully.",
           action: isCheckIn ? "check-in" : "check-out",
+          success: "true",
+          checkIn: data.attendance?.checkIn || "",
+          checkOut: data.attendance?.checkOut || "",
+          workingMinutes: String(data.attendance?.workingMinutes ?? 0),
         },
       });
-    }, 2500);
-  };
+    } catch (error) {
+      console.error("Face attendance error:", error);
 
-  const handleCameraReady = () => {
-    setCameraReady(true);
-    setCameraError(false);
+      Alert.alert(
+        "Attendance Failed",
+        error.message || "Unable to complete attendance. Please try again.",
+      );
+    } finally {
+      setScanning(false);
+    }
   };
-
-  // Hide the native stack header ("index / camera") for this screen
-  const hideHeader = <Stack.Screen options={{ headerShown: false }} />;
 
   if (!permission) {
     return (
-      <>
-        {hideHeader}
-        <View style={styles.permissionLoading}>
-          <ActivityIndicator size="large" color="#70F5B2" />
-          <Text style={styles.loadingText}>Preparing your camera...</Text>
-        </View>
-      </>
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.permissionText}>Checking camera permission...</Text>
+      </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <>
-        {hideHeader}
-        <SafeAreaView style={styles.safe}>
-          <View style={styles.permissionContainer}>
-            <View style={styles.permissionIcon}>
-              <Camera size={42} color="#70F5B2" />
-            </View>
+      <SafeAreaView style={styles.center}>
+        <StatusBar barStyle="dark-content" />
 
-            <Text style={styles.permissionTitle}>Camera Access Required</Text>
+        <Camera size={56} color="#2563eb" />
 
-            <Text style={styles.permissionDescription}>
-              Allow camera access to continue to the employee face-scanning
-              screen.
-            </Text>
+        <Text style={styles.permissionTitle}>Camera Permission Required</Text>
 
-            <TouchableOpacity
-              style={styles.allowButton}
-              onPress={requestPermission}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.allowButtonText}>Allow Camera Access</Text>
-            </TouchableOpacity>
+        <Text style={styles.permissionText}>
+          Allow camera access so your face can be verified for attendance.
+        </Text>
 
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Text style={styles.backButtonText}>Go Back</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={requestPermission}
+        >
+          <Text style={styles.primaryButtonText}>Allow Camera</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
     );
   }
 
   return (
-    <>
-      {hideHeader}
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="#080D14" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-        <View style={styles.content}>
-          {/* HEADER */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButtonIcon}
-              onPress={() => router.back()}
-              activeOpacity={0.7}
-            >
-              <ArrowLeft size={23} color="#FFFFFF" />
-            </TouchableOpacity>
+      <Stack.Screen options={{ headerShown: false }} />
 
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Face Verification</Text>
-              <Text style={styles.headerSubtitle}>EMPLOYEE ATTENDANCE</Text>
-            </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backIcon}
+          onPress={() => router.back()}
+          disabled={scanning}
+        >
+          <ArrowLeft size={23} color="#111827" />
+        </TouchableOpacity>
 
-            <View style={styles.secureBadge}>
-              <ShieldCheck size={19} color="#70F5B2" />
-            </View>
-          </View>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>
+            {isCheckIn ? "Check In" : "Check Out"}
+          </Text>
 
-          {/* INSTRUCTIONS */}
-          <View style={styles.introSection}>
-            <View style={styles.actionBadge}>
-              <View style={styles.actionDot} />
-              <Text style={styles.actionBadgeText}>
-                {isCheckIn ? "CHECK-IN MODE" : "CHECK-OUT MODE"}
-              </Text>
-            </View>
+          <Text style={styles.headerSubtitle}>Face verification</Text>
+        </View>
 
-            <Text style={styles.mainTitle}>Look into the camera</Text>
+        <View style={styles.headerIcon}>
+          <ShieldCheck size={24} color="#2563eb" />
+        </View>
+      </View>
 
-            <Text style={styles.description}>
-              Position your face inside the frame and look straight ahead.
-            </Text>
-          </View>
+      {/* Instructions */}
+      <View style={styles.instructionContainer}>
+        <Text style={styles.instructionTitle}>Verify your identity</Text>
 
-          {/* CAMERA PREVIEW — flex: 1 so it fills the remaining space */}
-          <View style={styles.cameraContainer}>
-            {!cameraError ? (
-              <CameraView
-                style={StyleSheet.absoluteFillObject}
-                facing="front"
-                onCameraReady={handleCameraReady}
-                onMountError={() => {
-                  setCameraError(true);
-                  setCameraReady(false);
-                }}
-              />
-            ) : (
-              <View style={styles.cameraErrorContainer}>
-                <Camera size={45} color="#70F5B2" />
-                <Text style={styles.cameraErrorTitle}>Camera unavailable</Text>
-                <Text style={styles.cameraErrorText}>
-                  Check camera permissions and try again.
-                </Text>
-                <TouchableOpacity
-                  style={styles.retryButton}
-                  onPress={() => {
-                    setCameraError(false);
-                    setCameraReady(false);
-                  }}
-                >
-                  <RotateCcw size={17} color="#08110D" />
-                  <Text style={styles.retryButtonText}>Try Again</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+        <Text style={styles.instructionText}>
+          Position your face inside the frame and look directly at the camera.
+        </Text>
+      </View>
 
-            {/* CAMERA OVERLAY */}
+      {/* Camera */}
+      <View style={styles.cameraContainer}>
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing="front"
+          mode="picture"
+          onCameraReady={() => {
+            setCameraReady(true);
+            setCameraError(false);
+          }}
+          onMountError={(event) => {
+            console.error("Camera mount error:", event);
+            setCameraError(true);
+          }}
+        />
+
+        {/* Face frame */}
+        <View style={styles.overlay}>
+          <View style={styles.faceFrame}>
+            <View style={[styles.corner, styles.topLeft]} />
+            <View style={[styles.corner, styles.topRight]} />
+            <View style={[styles.corner, styles.bottomLeft]} />
+            <View style={[styles.corner, styles.bottomRight]} />
+
             {!cameraError && (
-              <View pointerEvents="none" style={styles.cameraOverlay}>
-                {/* Top status label — absolutely positioned so it never overlaps the frame */}
-                <View style={styles.cameraTopLabel}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.cameraTopLabelText}>
-                    {cameraReady ? "CAMERA ACTIVE" : "STARTING CAMERA"}
-                  </Text>
-                </View>
-
-                {/* Face frame — centered in the remaining space */}
-                <Animated.View
-                  style={[
-                    styles.faceFrame,
-                    { transform: [{ scale: pulseAnimation }] },
-                  ]}
-                >
-                  <View style={[styles.frameCorner, styles.topLeft]} />
-                  <View style={[styles.frameCorner, styles.topRight]} />
-                  <View style={[styles.frameCorner, styles.bottomLeft]} />
-                  <View style={[styles.frameCorner, styles.bottomRight]} />
-
-                  <View style={styles.faceGuide}>
-                    <ScanFace size={90} color="#70F5B2" strokeWidth={1.1} />
-                  </View>
-
-                  {cameraReady && (
-                    <Animated.View
-                      style={[
-                        styles.scanLine,
-                        {
-                          opacity: scanning ? 1 : 0.8,
-                          transform: [
-                            {
-                              translateY: scanLinePosition.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, SCAN_TRAVEL],
-                              }),
-                            },
-                          ],
-                        },
-                      ]}
-                    />
-                  )}
-                </Animated.View>
-
-                {/* Bottom label — absolutely positioned at the bottom */}
-                <View style={styles.cameraBottomLabel}>
-                  <Text style={styles.cameraBottomText}>
-                    {scanning ? "PROCESSING TEST SCAN..." : "ALIGN YOUR FACE"}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* Loading overlay */}
-            {!cameraReady && !cameraError && (
-              <View pointerEvents="none" style={styles.cameraLoadingOverlay}>
-                <ActivityIndicator size="large" color="#70F5B2" />
-                <Text style={styles.cameraLoadingText}>
-                  Initializing camera...
-                </Text>
-              </View>
+              <Animated.View
+                style={[
+                  styles.scanLine,
+                  {
+                    transform: [
+                      {
+                        translateY: scanAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-100, 100],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
             )}
           </View>
 
-          {/* STATUS */}
-          <View style={styles.statusCard}>
-            <View style={styles.statusIconContainer}>
-              <ScanFace size={24} color="#70F5B2" />
-            </View>
+          <View style={styles.cameraStatus}>
+            <ScanFace size={17} color="#ffffff" />
 
-            <View style={styles.statusTextContainer}>
-              <Text style={styles.statusTitle}>
-                {cameraError
-                  ? "Camera needs attention"
-                  : scanning
-                  ? "Processing scan"
+            <Text style={styles.cameraStatusText}>
+              {cameraError
+                ? "Camera unavailable"
+                : scanning
+                  ? "Verifying face..."
                   : cameraReady
-                  ? "Ready to scan"
-                  : "Connecting to camera"}
-              </Text>
-
-              <Text style={styles.statusDescription}>
-                {cameraError
-                  ? "Please retry or check your device settings."
-                  : scanning
-                  ? "This is a camera test, not AI recognition."
-                  : cameraReady
-                  ? "Keep your face centered in the frame."
-                  : "Please wait while the camera starts."}
-              </Text>
-            </View>
-
-            <View
-              style={[
-                styles.statusIndicator,
-                cameraError && styles.errorIndicator,
-              ]}
-            />
-          </View>
-
-          {/* SCAN BUTTON */}
-          <TouchableOpacity
-            style={[
-              styles.scanButton,
-              (!cameraReady || scanning || cameraError) &&
-                styles.disabledButton,
-            ]}
-            onPress={handleScan}
-            disabled={!cameraReady || scanning || cameraError}
-            activeOpacity={0.85}
-          >
-            {scanning ? (
-              <ActivityIndicator size="small" color="#08110D" />
-            ) : (
-              <Camera size={22} color="#08110D" strokeWidth={2.5} />
-            )}
-            <Text style={styles.scanButtonText}>
-              {scanning ? "Processing..." : "Scan My Face"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* FOOTER */}
-          <View style={styles.footer}>
-            <ShieldCheck size={15} color="#82909F" />
-            <Text style={styles.footerText}>
-              Secure employee attendance interface
+                    ? "Position your face in the frame"
+                    : "Starting camera..."}
             </Text>
           </View>
         </View>
-      </SafeAreaView>
-    </>
+
+        {(!cameraReady || scanning || cameraError) && (
+          <View style={styles.cameraLoadingOverlay}>
+            {(!cameraReady || scanning) && (
+              <ActivityIndicator size="large" color="#ffffff" />
+            )}
+
+            {cameraError && (
+              <Text style={styles.cameraErrorText}>
+                Unable to start the camera. Please go back and try again.
+              </Text>
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* Guidance */}
+      <View style={styles.guidance}>
+        <ShieldCheck size={20} color="#16a34a" />
+
+        <Text style={styles.guidanceText}>
+          Your face will be checked against the registered employee record.
+        </Text>
+      </View>
+
+      {/* Action button */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            (!cameraReady || scanning || cameraError) && styles.disabledButton,
+          ]}
+          onPress={handleScan}
+          disabled={!cameraReady || scanning || cameraError}
+        >
+          {scanning ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <ScanFace size={21} color="#ffffff" />
+          )}
+
+          <Text style={styles.primaryButtonText}>
+            {scanning
+              ? "Verifying Face..."
+              : isCheckIn
+                ? "Verify & Check In"
+                : "Verify & Check Out"}
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={styles.footerNote}>
+          Keep your face visible and ensure good lighting.
+        </Text>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
-    backgroundColor: "#080D14",
+    backgroundColor: "#ffffff",
   },
 
-  // Padding lives on an inner View, which is more reliable than on SafeAreaView
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-
-  permissionLoading: {
-    flex: 1,
-    backgroundColor: "#080D14",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  loadingText: {
-    color: "#FFFFFF",
-    marginTop: 16,
-    fontSize: 14,
-  },
-
-  permissionContainer: {
+  center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 30,
-  },
-
-  permissionIcon: {
-    width: 90,
-    height: 90,
-    borderRadius: 28,
-    backgroundColor: "#14251F",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 25,
+    backgroundColor: "#ffffff",
+    padding: 24,
   },
 
   permissionTitle: {
-    color: "#FFFFFF",
-    fontSize: 25,
-    fontWeight: "800",
+    fontSize: 21,
+    fontWeight: "700",
+    color: "#111827",
+    marginTop: 22,
+    marginBottom: 10,
     textAlign: "center",
   },
 
-  permissionDescription: {
-    color: "#99A6B5",
+  permissionText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: "#6b7280",
     textAlign: "center",
-    fontSize: 15,
-    lineHeight: 24,
-    marginTop: 15,
-    marginBottom: 30,
-  },
-
-  allowButton: {
-    width: "100%",
-    backgroundColor: "#70F5B2",
-    paddingVertical: 17,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-
-  allowButtonText: {
-    color: "#08110D",
-    fontSize: 16,
-    fontWeight: "800",
-  },
-
-  backButton: {
-    padding: 18,
-  },
-
-  backButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
+    marginTop: 12,
+    marginBottom: 20,
   },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
-    marginBottom: 22,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
   },
 
-  backButtonIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
-    backgroundColor: "#151D28",
-    borderWidth: 1,
-    borderColor: "#26313E",
+  backIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "#f3f4f6",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -477,346 +443,211 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "800",
+    fontSize: 19,
+    fontWeight: "700",
+    color: "#111827",
   },
 
   headerSubtitle: {
-    color: "#718094",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    marginTop: 5,
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 3,
   },
 
-  secureBadge: {
+  headerIcon: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: "#14251F",
+    backgroundColor: "#eff6ff",
     justifyContent: "center",
     alignItems: "center",
   },
 
-  introSection: {
-    alignItems: "center",
-    marginBottom: 22,
+  instructionContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 22,
+    paddingBottom: 18,
   },
 
-  actionBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: "#14251F",
-    marginBottom: 13,
+  instructionTitle: {
+    fontSize: 23,
+    fontWeight: "700",
+    color: "#111827",
   },
 
-  actionDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#70F5B2",
-    marginRight: 8,
-  },
-
-  actionBadgeText: {
-    color: "#70F5B2",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.3,
-  },
-
-  mainTitle: {
-    color: "#FFFFFF",
-    fontSize: 25,
-    fontWeight: "800",
-    textAlign: "center",
-    letterSpacing: -0.5,
-  },
-
-  description: {
-    color: "#98A4B4",
-    fontSize: 13,
+  instructionText: {
+    fontSize: 14,
+    color: "#6b7280",
     lineHeight: 21,
-    textAlign: "center",
-    marginTop: 9,
-    maxWidth: 300,
+    marginTop: 7,
   },
 
-  // flex: 1 lets the camera fill whatever space remains above the status card
   cameraContainer: {
     flex: 1,
-    borderRadius: 28,
+    marginHorizontal: 20,
+    borderRadius: 26,
     overflow: "hidden",
-    backgroundColor: "#151D28",
-    borderWidth: 1,
-    borderColor: "#26313E",
-    marginBottom: 18,
+    backgroundColor: "#111827",
+    minHeight: 280,
   },
 
-  // Overlay uses absolute fill and centers the frame; labels are pinned top/bottom
-  cameraOverlay: {
+  overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(4, 9, 15, 0.12)",
-  },
-
-  cameraTopLabel: {
-    position: "absolute",
-    top: 14,
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(8, 13, 20, 0.78)",
-    borderRadius: 20,
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    zIndex: 4,
-  },
-
-  liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#70F5B2",
-    marginRight: 8,
-  },
-
-  cameraTopLabelText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.2,
   },
 
   faceFrame: {
-    width: FRAME_WIDTH,
-    height: FRAME_HEIGHT,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  faceGuide: {
-    width: FRAME_WIDTH - 40,
-    height: FRAME_HEIGHT - 30,
-    borderRadius: 90,
+    width: 230,
+    height: 290,
+    borderRadius: 115,
     borderWidth: 1,
-    borderColor: "rgba(112, 245, 178, 0.45)",
-    backgroundColor: "rgba(8, 13, 20, 0.12)",
-    justifyContent: "center",
+    borderColor: "rgba(255,255,255,0.35)",
+    overflow: "hidden",
     alignItems: "center",
+    justifyContent: "center",
   },
 
-  frameCorner: {
+  corner: {
     position: "absolute",
     width: 36,
     height: 36,
-    borderColor: "#70F5B2",
-    zIndex: 2,
+    borderColor: "#60a5fa",
+    borderWidth: 4,
   },
 
   topLeft: {
     top: 0,
     left: 0,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderTopLeftRadius: 17,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+    borderTopLeftRadius: 18,
   },
 
   topRight: {
     top: 0,
     right: 0,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-    borderTopRightRadius: 17,
+    borderLeftWidth: 0,
+    borderBottomWidth: 0,
+    borderTopRightRadius: 18,
   },
 
   bottomLeft: {
     bottom: 0,
     left: 0,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-    borderBottomLeftRadius: 17,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 18,
   },
 
   bottomRight: {
     bottom: 0,
     right: 0,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-    borderBottomRightRadius: 17,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+    borderBottomRightRadius: 18,
   },
 
   scanLine: {
     position: "absolute",
-    top: 15,
-    left: 13,
-    right: 13,
+    width: "85%",
     height: 2,
-    backgroundColor: "#70F5B2",
-    shadowColor: "#70F5B2",
+    backgroundColor: "#60a5fa",
+    shadowColor: "#60a5fa",
     shadowOpacity: 0.9,
-    shadowRadius: 9,
+    shadowRadius: 8,
     elevation: 5,
-    zIndex: 3,
   },
 
-  cameraBottomLabel: {
+  cameraStatus: {
     position: "absolute",
-    bottom: 14,
-    alignSelf: "center",
-    backgroundColor: "rgba(8, 13, 20, 0.78)",
-    borderRadius: 20,
+    bottom: 22,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(17,24,39,0.7)",
     paddingHorizontal: 15,
-    paddingVertical: 9,
-    zIndex: 4,
+    paddingVertical: 10,
+    borderRadius: 22,
+    gap: 8,
   },
 
-  cameraBottomText: {
-    color: "#70F5B2",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.4,
+  cameraStatusText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "600",
   },
 
   cameraLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(8, 13, 20, 0.78)",
+    backgroundColor: "rgba(17,24,39,0.25)",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 5,
-  },
-
-  cameraLoadingText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    marginTop: 15,
-  },
-
-  cameraErrorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 25,
-  },
-
-  cameraErrorTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "800",
-    marginTop: 18,
+    padding: 20,
   },
 
   cameraErrorText: {
-    color: "#99A6B5",
-    fontSize: 13,
+    color: "#ffffff",
     textAlign: "center",
-    lineHeight: 21,
-    marginTop: 10,
-  },
-
-  retryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#70F5B2",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 13,
-    marginTop: 20,
-  },
-
-  retryButtonText: {
-    color: "#08110D",
-    fontWeight: "800",
-  },
-
-  statusCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#111923",
-    borderWidth: 1,
-    borderColor: "#222D3B",
-    borderRadius: 19,
-    padding: 14,
-    marginBottom: 16,
-  },
-
-  statusIconContainer: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#14251F",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  statusTextContainer: {
-    flex: 1,
-    marginLeft: 13,
-  },
-
-  statusTitle: {
-    color: "#FFFFFF",
+    marginTop: 12,
     fontSize: 14,
-    fontWeight: "800",
   },
 
-  statusDescription: {
-    color: "#8491A2",
-    fontSize: 11,
-    lineHeight: 17,
-    marginTop: 4,
-  },
-
-  statusIndicator: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: "#70F5B2",
-    marginLeft: 8,
-  },
-
-  errorIndicator: {
-    backgroundColor: "#FF7777",
-  },
-
-  scanButton: {
+  guidance: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    minHeight: 58,
-    borderRadius: 17,
-    backgroundColor: "#70F5B2",
-    marginBottom: 14,
+    marginHorizontal: 24,
+    marginTop: 20,
+    gap: 10,
   },
 
-  scanButtonText: {
-    color: "#08110D",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-
-  disabledButton: {
-    opacity: 0.5,
+  guidanceText: {
+    flex: 1,
+    color: "#4b5563",
+    fontSize: 12,
+    lineHeight: 18,
   },
 
   footer: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 18,
+  },
+
+  primaryButton: {
+    minHeight: 54,
+    borderRadius: 16,
+    backgroundColor: "#2563eb",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
-    marginBottom: 12,
+    gap: 10,
+    paddingHorizontal: 18,
   },
 
-  footerText: {
-    color: "#82909F",
+  primaryButtonText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  disabledButton: {
+    opacity: 0.55,
+  },
+
+  backButton: {
+    padding: 12,
+  },
+
+  backButtonText: {
+    color: "#2563eb",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  footerNote: {
+    textAlign: "center",
+    color: "#9ca3af",
     fontSize: 11,
+    marginTop: 13,
   },
 });

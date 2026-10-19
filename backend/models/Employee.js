@@ -58,6 +58,22 @@ const employeeSchema = new mongoose.Schema(
       default: "active",
     },
 
+    faceEnrollment: {
+      status: {
+        type: String,
+        enum: ["not_registered", "registered"],
+        default: "not_registered",
+      },
+      subject: {
+        type: String,
+        default: null,
+      },
+      registeredAt: {
+        type: Date,
+        default: null,
+      },
+    },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
@@ -66,7 +82,7 @@ const employeeSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("Employee", employeeSchema);

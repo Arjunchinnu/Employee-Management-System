@@ -6,15 +6,23 @@ const API = axios.create({
 
 API.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("adminToken");
+    // Identify which session should authenticate this request.
+    const url = config.url || "";
+    const isEmployeeRequest = url.startsWith("/employee/");
+
+    const token = isEmployeeRequest
+      ? localStorage.getItem("employeeToken")
+      : localStorage.getItem("adminToken");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
     }
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 export default API;

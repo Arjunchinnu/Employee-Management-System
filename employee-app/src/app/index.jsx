@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import { router, useLocalSearchParams } from "expo-router";
 
@@ -7,10 +7,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ScrollView,
+  Alert,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   Camera,
@@ -21,9 +23,70 @@ import {
 } from "lucide-react-native";
 
 export default function HomeScreen() {
+  const params = useLocalSearchParams();
   const [attendanceStatus, setAttendanceStatus] = useState("not_checked_in");
   const [checkInTime, setCheckInTime] = useState(null);
   const [checkOutTime, setCheckOutTime] = useState(null);
+
+  useEffect(() => {
+    if (!params.message) {
+      return;
+    }
+
+    const message = String(params.message);
+    const action = String(params.action || "");
+    const success = String(params.success) === "true";
+
+    if (!success) {
+      Alert.alert("Attendance", message);
+      return;
+    }
+
+    if (action === "check-in") {
+      setAttendanceStatus("checked_in");
+
+      if (params.checkIn) {
+        setCheckInTime(
+          new Date(String(params.checkIn)).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        );
+      }
+
+      setCheckOutTime(null);
+    }
+
+    if (action === "check-out") {
+      setAttendanceStatus("checked_out");
+
+      if (params.checkIn) {
+        setCheckInTime(
+          new Date(String(params.checkIn)).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        );
+      }
+
+      if (params.checkOut) {
+        setCheckOutTime(
+          new Date(String(params.checkOut)).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        );
+      }
+    }
+
+    Alert.alert("Attendance Successful", message);
+  }, [
+    params.message,
+    params.action,
+    params.success,
+    params.checkIn,
+    params.checkOut,
+  ]);
 
   const getCurrentTime = () =>
     new Date().toLocaleTimeString([], {
