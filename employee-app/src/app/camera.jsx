@@ -19,7 +19,7 @@ import { useLocalSearchParams, router, Stack } from "expo-router";
 import { ScanFace, ArrowLeft, Camera, ShieldCheck } from "lucide-react-native";
 
 // Use your laptop's current IPv4 address.
-const API_BASE_URL = "http://172.20.10.3:5000";
+const API_BASE_URL = "http://10.236.177.80:5000";
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
