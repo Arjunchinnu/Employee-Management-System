@@ -6,7 +6,7 @@ const enrollEmployeeFace = async (req, res) => {
     const { id } = req.params;
 
     if (!req.file) {
-      return res.status(400).json({
+     e return res.status(400).json({
         success: false,
         message: "Please upload an employee face image.",
       });

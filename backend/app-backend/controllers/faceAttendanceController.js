@@ -1,3 +1,4 @@
+
 const Employee = require("../../models/Employee");
 const Attendance = require("../../models/Attendance");
 
@@ -6,7 +7,9 @@ const {
   recognizeFace,
 } = require("../services/faceRecognitionService");
 
-// Register an employee's face
+// ==========================================
+// REGISTER EMPLOYEE FACE
+// ==========================================
 exports.enrollEmployeeFace = async (req, res) => {
   try {
     const { id } = req.params;
@@ -41,12 +44,21 @@ exports.enrollEmployeeFace = async (req, res) => {
       });
     }
 
+    // Send the captured face to Python InsightFace.
     const result = await registerFace(
       req.file.buffer,
       employee.employeeId,
       req.file.originalname || "face.jpg",
     );
 
+    if (!result || result.success !== true) {
+      return res.status(400).json({
+        success: false,
+        message: result?.message || "Python could not enroll this face.",
+      });
+    }
+
+    // Update MongoDB only after Python confirms enrollment.
     employee.faceEnrollment = {
       status: "registered",
       subject: employee.employeeId,
@@ -64,15 +76,12 @@ exports.enrollEmployeeFace = async (req, res) => {
         name: employee.name,
         faceEnrollment: employee.faceEnrollment,
       },
-      recognitionService: result,
     });
   } catch (error) {
     console.error("Face enrollment error:", {
       message: error.message,
-      code: error.code,
       status: error.response?.status,
       response: error.response?.data,
-      url: error.config?.url,
     });
 
     return res.status(500).json({
@@ -82,7 +91,9 @@ exports.enrollEmployeeFace = async (req, res) => {
   }
 };
 
-// Test face recognition
+// ==========================================
+// TEST FACE RECOGNITION
+// ==========================================
 exports.testFaceRecognition = async (req, res) => {
   try {
     if (!req.file) {
@@ -109,19 +120,20 @@ exports.testFaceRecognition = async (req, res) => {
       response: error.response?.data,
     });
 
-    return res.status(500).json({
+    return res.status(502).json({
       success: false,
-      message: "Face recognition failed.",
+      message: "Face recognition service failed.",
     });
   }
 };
 
-// Record attendance using face recognition
+// ==========================================
+// RECORD ATTENDANCE USING FACE RECOGNITION
+// ==========================================
 exports.recordFaceAttendance = async (req, res) => {
   try {
     const { action } = req.body;
 
-    // Validate the requested action
     if (!["check-in", "check-out"].includes(action)) {
       return res.status(400).json({
         success: false,
@@ -129,7 +141,6 @@ exports.recordFaceAttendance = async (req, res) => {
       });
     }
 
-    // Validate uploaded face image
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -137,68 +148,63 @@ exports.recordFaceAttendance = async (req, res) => {
       });
     }
 
-    // Recognize the uploaded face
+    // Ask Python to recognize the face.
     const recognitionResult = await recognizeFace(
       req.file.buffer,
       req.file.originalname || "attendance.jpg",
     );
 
-    // Get CompreFace recognition results
-    const results = recognitionResult?.result || [];
-
-    if (results.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: "No recognizable face was found.",
-      });
-    }
-
-    // Find the highest similarity score returned by CompreFace
-    const threshold = Number(
-      process.env.FACE_MATCH_THRESHOLD || 0.85,
-    );
-
-    let bestMatch = null;
-
-    for (const face of results) {
-      for (const subject of face.subjects || []) {
-        if (
-          !bestMatch ||
-          subject.similarity > bestMatch.similarity
-        ) {
-          bestMatch = subject;
-        }
-      }
-    }
-
-    // Reject faces that do not meet the configured threshold
+    // Python returns:
+    // { success, recognized, employeeId, similarity, message }
     if (
-      !bestMatch ||
-      !bestMatch.subject ||
-      bestMatch.similarity < threshold
+      !recognitionResult ||
+      recognitionResult.success !== true ||
+      recognitionResult.recognized !== true ||
+      !recognitionResult.employeeId
     ) {
       return res.status(401).json({
         success: false,
-        message: "Face not recognized. Please try again.",
+        message: "Invalid Person. Face not recognized.",
       });
     }
 
-    // Match the recognized subject to the employee ID
+    const recognizedEmployeeId = String(
+      recognitionResult.employeeId,
+    ).trim().toUpperCase();
+
+    const similarity = Number(recognitionResult.similarity);
+
+    const threshold = Number(
+      process.env.FACE_MATCH_THRESHOLD || 0.45,
+    );
+
+    // Validate the returned score as well as the recognition result.
+    if (
+      !Number.isFinite(similarity) ||
+      similarity < threshold
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Person. Face match is below the threshold.",
+      });
+    }
+
+    // Verify the recognized employee exists and is active.
     const employee = await Employee.findOne({
-      employeeId: bestMatch.subject,
+      employeeId: recognizedEmployeeId,
       employmentStatus: "active",
       "faceEnrollment.status": "registered",
-      "faceEnrollment.subject": bestMatch.subject,
+      "faceEnrollment.subject": recognizedEmployeeId,
     });
 
     if (!employee) {
-      return res.status(404).json({
+      return res.status(401).json({
         success: false,
-        message: "No active enrolled employee matches this face.",
+        message: "Invalid Person. No active enrolled employee matches this face.",
       });
     }
 
-    // Use the current date in India
+    // Use today's date in India.
     const date = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Kolkata",
       year: "numeric",
@@ -206,13 +212,14 @@ exports.recordFaceAttendance = async (req, res) => {
       day: "2-digit",
     }).format(new Date());
 
-    // Find today's attendance record
     let attendance = await Attendance.findOne({
       employee: employee._id,
       date,
     });
 
+    // ======================================
     // CHECK-IN
+    // ======================================
     if (action === "check-in") {
       if (attendance?.checkIn) {
         return res.status(409).json({
@@ -250,12 +257,14 @@ exports.recordFaceAttendance = async (req, res) => {
           status: attendance.status,
         },
         faceMatch: {
-          similarity: bestMatch.similarity,
+          similarity,
         },
       });
     }
 
+    // ======================================
     // CHECK-OUT
+    // ======================================
     if (!attendance || !attendance.checkIn) {
       return res.status(400).json({
         success: false,
@@ -272,7 +281,6 @@ exports.recordFaceAttendance = async (req, res) => {
 
     const checkOutTime = new Date();
 
-    // Calculate working time in minutes
     const elapsedMilliseconds =
       checkOutTime.getTime() - attendance.checkIn.getTime();
 
@@ -306,7 +314,7 @@ exports.recordFaceAttendance = async (req, res) => {
         status: attendance.status,
       },
       faceMatch: {
-        similarity: bestMatch.similarity,
+        similarity,
       },
     });
   } catch (error) {
@@ -316,9 +324,10 @@ exports.recordFaceAttendance = async (req, res) => {
       response: error.response?.data,
     });
 
-    return res.status(500).json({
+    return res.status(502).json({
       success: false,
-      message: "Failed to process face attendance.",
+      message: "Unable to process face attendance. Please try again.",
     });
   }
 };
+
